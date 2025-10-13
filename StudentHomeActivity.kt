@@ -921,8 +921,7 @@ class StudentHomeActivity : ComponentActivity() {
                                                     db.collection("claim_history").add(historyRecord)
 
                                                     // Send notification to uploader
-                                                    // Notify uploader
-                                                    val uploaderNotification = hashMapOf(
+                                                    val notificationData = hashMapOf(
                                                         "userId" to item.uploaderEmail,
                                                         "title" to "New Claim Request",
                                                         "message" to "Your item '${item.title}' has been claimed by ${currentUser.email}",
@@ -932,33 +931,8 @@ class StudentHomeActivity : ComponentActivity() {
                                                         "claimId" to docRef.id,
                                                         "itemId" to item.id
                                                     )
-                                                    db.collection("notifications").add(uploaderNotification)
+                                                    db.collection("notifications").add(notificationData)
 
-// Fetch admin emails dynamically and notify them
-                                                    // Notify admin(s) — any email ending with @vit.ac.in
-                                                    db.collection("users")
-                                                        .get()
-                                                        .addOnSuccessListener { querySnapshot ->
-                                                            for (userDoc in querySnapshot.documents) {
-                                                                val email = userDoc.getString("email")
-                                                                if (email != null && email.endsWith("@vit.ac.in")) {
-                                                                    val adminNotification = hashMapOf(
-                                                                        "userId" to email,
-                                                                        "title" to "New Claim Request (Student)",
-                                                                        "message" to "The item '${item.title}' has been claimed by ${currentUser.email}. Please review the request.",
-                                                                        "type" to "claim_request_admin",
-                                                                        "read" to false,
-                                                                        "timestamp" to System.currentTimeMillis(),
-                                                                        "claimId" to docRef.id,
-                                                                        "itemId" to item.id
-                                                                    )
-                                                                    db.collection("notifications").add(adminNotification)
-                                                                }
-                                                            }
-                                                        }
-                                                        .addOnFailureListener { e ->
-                                                            Toast.makeText(this@StudentHomeActivity, "Failed to notify admin: ${e.message}", Toast.LENGTH_SHORT).show()
-                                                        }
                                                     Toast.makeText(this@StudentHomeActivity, "Claim request sent to admin!", Toast.LENGTH_LONG).show()
                                                 }
                                                 .addOnFailureListener { e ->
