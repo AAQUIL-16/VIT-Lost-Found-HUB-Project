@@ -40,13 +40,8 @@ class SignupActivity : ComponentActivity() {
         setContent {
             val isDarkTheme = isSystemInDarkTheme()
 
-            // --- Define Dark & Light Mode Colors ---
             val textColor = if (isDarkTheme) Color(0xFF000000) else Color.White
             val buttonBg = if (isDarkTheme) Color(0xFF000000) else Color.White
-            val backgroundGradient = if (isDarkTheme)
-                Brush.verticalGradient(listOf(Color(0xFF121212), Color(0xFF000000)))
-            else
-                Brush.verticalGradient(listOf(PremiumAqua, PremiumDarkAqua))
 
             var email by remember { mutableStateOf("") }
             var password by remember { mutableStateOf("") }
@@ -57,8 +52,17 @@ class SignupActivity : ComponentActivity() {
 
             val scrollState = rememberScrollState()
 
-            // Background gradient
-            Box( modifier = Modifier .fillMaxSize() .background( brush = Brush.verticalGradient( colors = listOf(PremiumAqua, PremiumDarkAqua) ) ) .padding(24.dp) ){
+            // ✅ Keep your background gradient unchanged
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(PremiumAqua, PremiumDarkAqua)
+                        )
+                    )
+                    .padding(24.dp)
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -79,7 +83,6 @@ class SignupActivity : ComponentActivity() {
 
                     Spacer(Modifier.height(20.dp))
 
-                    // --- Fixed Role Label ---
                     Text(
                         text = "Student",
                         color = PremiumAqua,
@@ -99,7 +102,6 @@ class SignupActivity : ComponentActivity() {
                         label = { Text("Student Email (@vitstudent.ac.in)", color = textColor) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        isError = message.contains("email"),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = textColor,
                             unfocusedTextColor = textColor,
@@ -108,16 +110,6 @@ class SignupActivity : ComponentActivity() {
                             unfocusedBorderColor = textColor
                         )
                     )
-                    if (message.contains("email")) {
-                        Text(
-                            text = message,
-                            color = Color.Red,
-                            fontSize = 12.sp,
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .align(Alignment.Start)
-                        )
-                    }
 
                     Spacer(Modifier.height(16.dp))
 
@@ -131,14 +123,9 @@ class SignupActivity : ComponentActivity() {
                         trailingIcon = {
                             val icon = if (showPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                             IconButton(onClick = { showPassword = !showPassword }) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = "Toggle Password Visibility",
-                                    tint = textColor
-                                )
+                                Icon(imageVector = icon, contentDescription = null, tint = textColor)
                             }
                         },
-                        isError = message.contains("Password"),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = textColor,
                             unfocusedTextColor = textColor,
@@ -147,16 +134,6 @@ class SignupActivity : ComponentActivity() {
                             unfocusedBorderColor = textColor
                         )
                     )
-                    if (message.contains("Password")) {
-                        Text(
-                            text = message,
-                            color = Color.Red,
-                            fontSize = 12.sp,
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .align(Alignment.Start)
-                        )
-                    }
 
                     Spacer(Modifier.height(16.dp))
 
@@ -170,14 +147,9 @@ class SignupActivity : ComponentActivity() {
                         trailingIcon = {
                             val icon = if (showConfirmPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                             IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) {
-                                Icon(
-                                    imageVector = icon,
-                                    contentDescription = "Toggle Confirm Password Visibility",
-                                    tint = textColor
-                                )
+                                Icon(imageVector = icon, contentDescription = null, tint = textColor)
                             }
                         },
-                        isError = message.contains("match"),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = textColor,
                             unfocusedTextColor = textColor,
@@ -186,16 +158,6 @@ class SignupActivity : ComponentActivity() {
                             unfocusedBorderColor = textColor
                         )
                     )
-                    if (message.contains("match")) {
-                        Text(
-                            text = message,
-                            color = Color.Red,
-                            fontSize = 12.sp,
-                            modifier = Modifier
-                                .padding(start = 4.dp)
-                                .align(Alignment.Start)
-                        )
-                    }
 
                     Spacer(Modifier.height(24.dp))
 
@@ -209,40 +171,38 @@ class SignupActivity : ComponentActivity() {
                                 password.isBlank() -> message = "Enter your password"
                                 confirmPassword.isBlank() -> message = "Enter confirm password"
                                 password.length < 8 -> message = "Password must be at least 8 characters"
-                                !password.matches(Regex(".[A-Z].")) -> message = "Password must contain an uppercase letter"
-                                !password.matches(Regex(".[a-z].")) -> message = "Password must contain a lowercase letter"
-                                !password.matches(Regex(".[0-9].")) -> message = "Password must contain a number"
-                                !password.matches(Regex(".[!@#\$%^&+=?-].")) -> message = "Password must contain a special character"
-                                password != confirmPassword -> message = "Password didn't match"
+                                !password.contains(Regex("[A-Z]")) -> message = "Password must contain an uppercase letter"
+                                !password.contains(Regex("[a-z]")) -> message = "Password must contain a lowercase letter"
+                                !password.contains(Regex("[0-9]")) -> message = "Password must contain a number"
+                                !password.contains(Regex("[!@#\$%^&+=?-]")) -> message = "Password must contain a special character"
+                                password != confirmPassword -> message = "Passwords do not match"
                                 else -> {
+                                    // ✅ Firebase Sign Up Logic
                                     auth.createUserWithEmailAndPassword(email, password)
-                                        .addOnCompleteListener { task ->
-                                            if (task.isSuccessful) {
-                                                auth.currentUser?.sendEmailVerification()
-                                                    ?.addOnCompleteListener { emailTask ->
-                                                        if (emailTask.isSuccessful) {
-                                                            Toast.makeText(
-                                                                this@SignupActivity,
-                                                                "Verification email sent! Please verify before logging in.",
-                                                                Toast.LENGTH_LONG
-                                                            ).show()
-                                                            val intent = Intent(
-                                                                this@SignupActivity,
-                                                                VerifyEmailActivity::class.java
-                                                            )
-                                                            intent.putExtra("role", "Student")
-                                                            intent.putExtra("email", email)
-                                                            startActivity(intent)
-                                                            finish()
-                                                        } else {
-                                                            message = emailTask.exception?.message
-                                                                ?: "Failed to send verification email"
-                                                        }
-                                                    }
-                                            } else {
-                                                message =
-                                                    task.exception?.message ?: "Signup failed"
-                                            }
+                                        .addOnSuccessListener {
+                                            auth.currentUser?.sendEmailVerification()
+                                                ?.addOnSuccessListener {
+                                                    Toast.makeText(
+                                                        this@SignupActivity,
+                                                        "Verification email sent! Please verify before logging in.",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+
+                                                    val intent = Intent(
+                                                        this@SignupActivity,
+                                                        VerifyEmailActivity::class.java
+                                                    )
+                                                    intent.putExtra("role", "Student")
+                                                    intent.putExtra("email", email)
+                                                    startActivity(intent)
+                                                    finish()
+                                                }
+                                                ?.addOnFailureListener {
+                                                    message = "Failed to send verification email: ${it.message}"
+                                                }
+                                        }
+                                        .addOnFailureListener {
+                                            message = "Signup failed: ${it.message}"
                                         }
                                 }
                             }
@@ -274,6 +234,15 @@ class SignupActivity : ComponentActivity() {
                     )
 
                     Spacer(Modifier.height(16.dp))
+
+                    if (message.isNotEmpty()) {
+                        Text(
+                            text = message,
+                            color = Color.Red,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
                 }
             }
         }
