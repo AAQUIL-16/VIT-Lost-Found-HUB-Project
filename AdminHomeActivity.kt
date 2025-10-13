@@ -222,7 +222,7 @@ class AdminHomeActivity : ComponentActivity() {
                         .sortedByDescending { it.timestamp }
                 }
 
-            // Fetch ONLY claim request notifications for admin
+            // Fetch ONLY claim request notifications for admin - FIXED: Show proper claim request notifications
             db.collection("notifications")
                 .whereEqualTo("type", "claim_request")
                 .addSnapshotListener { snapshot, e ->
@@ -280,9 +280,9 @@ class AdminHomeActivity : ComponentActivity() {
             }
         }
 
-        // Filter claims for display - only show Pending and Approved (not Given)
+        // Filter claims for display - only show Pending claims (Approved claims go to history)
         val displayClaims = remember(claimRequests) {
-            claimRequests.filter { it.claimStatus != "Given" }
+            claimRequests.filter { it.claimStatus == "Pending" }
         }
 
         val filteredDisplayClaims = remember(displayClaims, searchQuery, searchFilter) {
@@ -455,14 +455,13 @@ class AdminHomeActivity : ComponentActivity() {
                         1 -> {
                             val claimsToShow = if (searchQuery.isEmpty()) filteredDisplayClaims else filteredDisplayClaims
                             val pendingClaims = claimsToShow.filter { it.claimStatus == "Pending" }
-                            val approvedClaims = claimsToShow.filter { it.claimStatus == "Approved" }
 
                             if (claimsToShow.isEmpty()) {
                                 Box(modifier = Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(Icons.Default.Assignment, "No items", modifier = Modifier.size(80.dp), tint = colorScheme.onSurface.copy(alpha = 0.3f))
                                         Spacer(Modifier.height(16.dp))
-                                        Text("No items!", color = colorScheme.onSurface.copy(alpha = 0.6f), textAlign = TextAlign.Center)
+                                        Text("No pending claims!", color = colorScheme.onSurface.copy(alpha = 0.6f), textAlign = TextAlign.Center)
                                     }
                                 }
                             } else {
@@ -475,22 +474,6 @@ class AdminHomeActivity : ComponentActivity() {
                                                 colorScheme,
                                                 onApprove = { approveClaim(claim) },
                                                 onReject = { rejectClaim(claim) },
-                                                onImageClick = { imageUrl ->
-                                                    selectedImageUrl = imageUrl
-                                                    showFullImage = true
-                                                }
-                                            )
-                                        }
-                                    }
-                                    if (approvedClaims.isNotEmpty()) {
-                                        item { Text("Approved Claims - Ready to Give (${approvedClaims.size})", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF4CAF50), modifier = Modifier.padding(vertical = 8.dp)) }
-                                        items(approvedClaims, key = { it.id }) { claim ->
-                                            PremiumAdminClaimCard(
-                                                claim,
-                                                colorScheme,
-                                                onApprove = null,
-                                                onReject = null,
-                                                onMarkAsGiven = { markItemAsGiven(claim) },
                                                 onImageClick = { imageUrl ->
                                                     selectedImageUrl = imageUrl
                                                     showFullImage = true
@@ -921,10 +904,6 @@ class AdminHomeActivity : ComponentActivity() {
                             Button(onClick = { onReject?.invoke() }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336)), modifier = Modifier.weight(1f).padding(start = 4.dp)) { Text("Reject") }
                         }
                     }
-                    "Approved" -> {
-                        Spacer(Modifier.height(12.dp))
-                        Button(onClick = { onMarkAsGiven?.invoke() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3))) { Text("Mark as Given") }
-                    }
                 }
             }
         }
@@ -979,7 +958,7 @@ class AdminHomeActivity : ComponentActivity() {
                                         val rejectionNotification = mapOf(
                                             "userId" to otherClaimerEmail,
                                             "title" to "Claim Auto-Rejected ❌",
-                                            "message" to "Your claim for '${claim.title}' was automatically rejected because another claim was approved for this item.",
+                                            "message" to "The claim for '${claim.title}' was automatically rejected because another claim was approved for this item.",
                                             "type" to "claim_rejected",
                                             "read" to false,
                                             "timestamp" to System.currentTimeMillis(),
@@ -996,7 +975,7 @@ class AdminHomeActivity : ComponentActivity() {
                         val approvedNotification = mapOf(
                             "userId" to claim.claimerEmail,
                             "title" to "Claim Approved! 🎉",
-                            "message" to "Your claim for '${claim.title}' has been approved! Please contact the admin to collect your item.",
+                            "message" to "The claim for '${claim.title}' has been approved! Please contact the admin to collect your item.",
                             "type" to "claim_approved",
                             "read" to false,
                             "timestamp" to System.currentTimeMillis(),
@@ -1009,7 +988,7 @@ class AdminHomeActivity : ComponentActivity() {
                         val uploaderNotification = mapOf(
                             "userId" to claim.uploaderEmail,
                             "title" to "Item Claim Approved ✅",
-                            "message" to "Your item '${claim.title}' has been claimed by ${claim.claimerName}. The claim was approved.",
+                            "message" to "The item '${claim.title}' has been claimed by ${claim.claimerName}. The claim was approved.",
                             "type" to "item_claimed",
                             "read" to false,
                             "timestamp" to System.currentTimeMillis(),
@@ -1049,7 +1028,7 @@ class AdminHomeActivity : ComponentActivity() {
                 val notification = mapOf(
                     "userId" to claim.claimerEmail,
                     "title" to "Claim Rejected ❌",
-                    "message" to "Your claim for '${claim.title}' has been rejected.",
+                    "message" to "The claim for '${claim.title}' has been rejected.",
                     "type" to "claim_rejected",
                     "read" to false,
                     "timestamp" to System.currentTimeMillis(),
@@ -1084,7 +1063,7 @@ class AdminHomeActivity : ComponentActivity() {
                 val notification = mapOf(
                     "userId" to claim.claimerEmail,
                     "title" to "Item Given 🎁",
-                    "message" to "Your item '${claim.title}' has been marked as given. Please collect it from the admin.",
+                    "message" to "The item '${claim.title}' has been marked as given.",
                     "type" to "item_given",
                     "read" to false,
                     "timestamp" to System.currentTimeMillis(),
@@ -1097,7 +1076,7 @@ class AdminHomeActivity : ComponentActivity() {
                 val uploaderNotification = mapOf(
                     "userId" to claim.uploaderEmail,
                     "title" to "Item Successfully Returned ✅",
-                    "message" to "Your item '${claim.title}' has been successfully given to ${claim.claimerName}.",
+                    "message" to "The item '${claim.title}' has been successfully given to ${claim.claimerName}.",
                     "type" to "item_returned",
                     "read" to false,
                     "timestamp" to System.currentTimeMillis(),
