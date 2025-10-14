@@ -29,13 +29,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 
 class LoginActivity : ComponentActivity() {
 
-    private val auth = FirebaseAuth.getInstance()
+    private lateinit var auth: FirebaseAuth
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        auth = Firebase.auth
         setContent {
             val context = LocalContext.current
             val focusManager = LocalFocusManager.current
@@ -45,19 +48,16 @@ class LoginActivity : ComponentActivity() {
             val buttonBg = if (isDarkTheme) Color(0xFF000000) else Color.White
             val roleButtonBgSelected = if (isDarkTheme) Color(0xFF000000) else Color.White
             val roleButtonBgUnselected =
-                if (isDarkTheme) Color(0x33000000) else PremiumDarkAqua.copy(alpha = 0.3f)
+                if (isDarkTheme) Color(0x33000000) else Color(0xFF006D77).copy(alpha = 0.3f)
 
-            val backgroundGradient = if (isDarkTheme)
-                Brush.verticalGradient(listOf(Color(0xFF121212), Color(0xFF000000)))
-            else
+            val backgroundGradient =
                 Brush.verticalGradient(listOf(PremiumAqua, PremiumDarkAqua))
 
             var email by remember { mutableStateOf("") }
             var password by remember { mutableStateOf("") }
             var showPassword by remember { mutableStateOf(false) }
             var selectedRole by remember { mutableStateOf("Student") }
-            var emailError by remember { mutableStateOf("") }
-            var passwordError by remember { mutableStateOf("") }
+            var isLoading by remember { mutableStateOf(false) }
 
             var showForgotDialog by remember { mutableStateOf(false) }
             var forgotEmail by remember { mutableStateOf("") }
@@ -66,7 +66,7 @@ class LoginActivity : ComponentActivity() {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(brush = Brush.verticalGradient(colors = listOf(PremiumAqua, PremiumDarkAqua)))
+                    .background(brush = backgroundGradient)
                     .padding(24.dp)
             ) {
                 Column(
@@ -98,7 +98,7 @@ class LoginActivity : ComponentActivity() {
                             shape = RoundedCornerShape(20.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (selectedRole == "Student") roleButtonBgSelected else roleButtonBgUnselected,
-                                contentColor = if (selectedRole == "Student") PremiumAqua else textColor
+                                contentColor = if (selectedRole == "Student") Color(0xFF83C5BE) else textColor
                             )
                         ) { Text("Student") }
 
@@ -107,7 +107,7 @@ class LoginActivity : ComponentActivity() {
                             shape = RoundedCornerShape(20.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (selectedRole == "Admin") roleButtonBgSelected else roleButtonBgUnselected,
-                                contentColor = if (selectedRole == "Admin") PremiumAqua else textColor
+                                contentColor = if (selectedRole == "Admin") Color(0xFF83C5BE) else textColor
                             )
                         ) { Text("Admin") }
                     }
@@ -116,10 +116,7 @@ class LoginActivity : ComponentActivity() {
 
                     OutlinedTextField(
                         value = email,
-                        onValueChange = {
-                            email = it
-                            emailError = ""
-                        },
+                        onValueChange = { email = it },
                         label = {
                             Text(
                                 if (selectedRole == "Student") "Student Email (@vitstudent.ac.in)"
@@ -128,7 +125,6 @@ class LoginActivity : ComponentActivity() {
                             )
                         },
                         textStyle = LocalTextStyle.current.copy(color = textColor),
-                        isError = emailError.isNotEmpty(),
                         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = KeyboardType.Email),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -136,24 +132,17 @@ class LoginActivity : ComponentActivity() {
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = textColor,
                             unfocusedBorderColor = textColor,
-                            errorBorderColor = Color.Red,
                             cursorColor = textColor,
                             focusedTextColor = textColor,
                             unfocusedTextColor = textColor
                         )
                     )
-                    if (emailError.isNotEmpty()) {
-                        Text(emailError, color = Color.Red, fontSize = 12.sp, modifier = Modifier.align(Alignment.Start))
-                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     OutlinedTextField(
                         value = password,
-                        onValueChange = {
-                            password = it
-                            passwordError = ""
-                        },
+                        onValueChange = { password = it },
                         label = { Text("Password", color = textColor) },
                         textStyle = LocalTextStyle.current.copy(color = textColor),
                         visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
@@ -163,22 +152,17 @@ class LoginActivity : ComponentActivity() {
                                 Icon(imageVector = icon, contentDescription = "Toggle Password Visibility", tint = textColor)
                             }
                         },
-                        isError = passwordError.isNotEmpty(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Color.Transparent, RoundedCornerShape(12.dp)),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = textColor,
                             unfocusedBorderColor = textColor,
-                            errorBorderColor = Color.Red,
                             cursorColor = textColor,
                             focusedTextColor = textColor,
                             unfocusedTextColor = textColor
                         )
                     )
-                    if (passwordError.isNotEmpty()) {
-                        Text(passwordError, color = Color.Red, fontSize = 12.sp, modifier = Modifier.align(Alignment.Start))
-                    }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -199,56 +183,99 @@ class LoginActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // ✅ Login button with verification check
+                    // ✅ Login button with proper error handling
                     Button(
                         onClick = {
                             focusManager.clearFocus()
-                            emailError = ""
-                            passwordError = ""
 
                             val trimmedEmail = email.trim().lowercase()
+
+                            // Basic validation
                             if (trimmedEmail.isEmpty()) {
-                                emailError = "Enter your email"
+                                Toast.makeText(context, "Enter your email", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
                             if (password.isEmpty()) {
-                                passwordError = "Enter your password"
+                                Toast.makeText(context, "Enter your password", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
                             if (selectedRole == "Student" && !trimmedEmail.endsWith("@vitstudent.ac.in")) {
-                                emailError = "Only VIT student emails are allowed"
+                                Toast.makeText(context, "Only VIT student emails are allowed", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
                             if (selectedRole == "Admin" && !trimmedEmail.endsWith("@vit.ac.in")) {
-                                emailError = "Only VIT admin emails are allowed"
+                                Toast.makeText(context, "Only VIT admin emails are allowed", Toast.LENGTH_LONG).show()
                                 return@Button
                             }
 
+                            isLoading = true
+
+                            // Firebase authentication
                             auth.signInWithEmailAndPassword(trimmedEmail, password)
                                 .addOnCompleteListener { task ->
+                                    isLoading = false
+
                                     if (task.isSuccessful) {
                                         val user = auth.currentUser
-                                        user?.reload()?.addOnCompleteListener {
-                                            if (user != null && (selectedRole == "Admin" || user.isEmailVerified)) {
-                                                // ✅ Allow only verified students, admins bypass
-                                                if (selectedRole == "Student") {
-                                                    startActivity(Intent(this@LoginActivity, StudentHomeActivity::class.java))
-                                                } else {
-                                                    startActivity(Intent(this@LoginActivity, AdminHomeActivity::class.java))
-                                                }
-                                                finish()
-                                            } else {
-                                                // ❌ Not verified
-                                                auth.signOut()
+                                        if (user != null) {
+                                            // Check if email is verified for students
+                                            if (selectedRole == "Student" && !user.isEmailVerified) {
                                                 Toast.makeText(
-                                                    this@LoginActivity,
+                                                    context,
                                                     "Please verify your email before logging in.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                                auth.signOut()
+                                                return@addOnCompleteListener
+                                            }
+
+                                            // Login successful - navigate to appropriate screen
+                                            if (selectedRole == "Student") {
+                                                startActivity(Intent(this@LoginActivity, StudentHomeActivity::class.java))
+                                            } else {
+                                                startActivity(Intent(this@LoginActivity, AdminHomeActivity::class.java))
+                                            }
+                                            finish()
+                                        }
+                                    } else {
+                                        // Handle specific Firebase errors
+                                        val exception = task.exception
+                                        val errorMessage = exception?.message ?: "Login failed"
+
+                                        when {
+                                            errorMessage.contains("no user record", ignoreCase = true) ||
+                                                    errorMessage.contains("there is no user", ignoreCase = true) ||
+                                                    errorMessage.contains("user not found", ignoreCase = true) -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Email ID doesn't exist",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                            errorMessage.contains("password is invalid", ignoreCase = true) ||
+                                                    errorMessage.contains("wrong password", ignoreCase = true) ||
+                                                    errorMessage.contains("incorrect password", ignoreCase = true) -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Incorrect password",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                            errorMessage.contains("network error", ignoreCase = true) -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Network error. Please check your internet connection",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                            else -> {
+                                                Toast.makeText(
+                                                    context,
+                                                    "Login failed: ${exception?.localizedMessage}",
                                                     Toast.LENGTH_LONG
                                                 ).show()
                                             }
                                         }
-                                    } else {
-                                        passwordError = "Enter correct password"
                                     }
                                 }
                         },
@@ -258,10 +285,19 @@ class LoginActivity : ComponentActivity() {
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = buttonBg,
-                            contentColor = PremiumAqua
-                        )
+                            contentColor = Color(0xFF006D77)
+                        ),
+                        enabled = !isLoading
                     ) {
-                        Text("Login", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color(0xFF006D77),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("Login", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -278,7 +314,7 @@ class LoginActivity : ComponentActivity() {
                     }
                 }
 
-                // Forgot Password Dialog (unchanged)
+                // Forgot Password Dialog
                 if (showForgotDialog) {
                     var forgotEmailError by remember { mutableStateOf("") }
 
@@ -289,7 +325,7 @@ class LoginActivity : ComponentActivity() {
                             sendingReset = false
                             forgotEmailError = ""
                         },
-                        containerColor = PremiumAqua,
+                        containerColor = Color(0xFF83C5BE),
                         title = {
                             Text(
                                 "Forgot Password",
@@ -367,7 +403,8 @@ class LoginActivity : ComponentActivity() {
                                                 ).show()
                                             }
                                         }
-                                }
+                                },
+                                enabled = !sendingReset
                             ) {
                                 Text(
                                     if (sendingReset) "Sending..." else "Send Reset Link",
