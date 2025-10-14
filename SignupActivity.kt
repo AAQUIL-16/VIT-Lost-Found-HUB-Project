@@ -37,22 +37,21 @@ class SignupActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             val isDarkTheme = isSystemInDarkTheme()
-
-            val textColor = if (isDarkTheme) Color(0xFF000000) else Color.White
-            val buttonBg = if (isDarkTheme) Color(0xFF000000) else Color.White
+            val textColor = if (isDarkTheme) Color.Black else Color.White
+            val buttonBg = if (isDarkTheme) Color.Black else Color.White
 
             var email by remember { mutableStateOf("") }
             var password by remember { mutableStateOf("") }
             var confirmPassword by remember { mutableStateOf("") }
             var showPassword by remember { mutableStateOf(false) }
             var showConfirmPassword by remember { mutableStateOf(false) }
-            var message by remember { mutableStateOf("") }
+            var isLoading by remember { mutableStateOf(false) }
 
             val scrollState = rememberScrollState()
 
-            // ✅ Keep your background gradient unchanged
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -95,7 +94,6 @@ class SignupActivity : ComponentActivity() {
 
                     Spacer(Modifier.height(20.dp))
 
-                    // --- Email Field ---
                     OutlinedTextField(
                         value = email,
                         onValueChange = { email = it },
@@ -113,7 +111,6 @@ class SignupActivity : ComponentActivity() {
 
                     Spacer(Modifier.height(16.dp))
 
-                    // --- Password Field ---
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it },
@@ -121,7 +118,8 @@ class SignupActivity : ComponentActivity() {
                         visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                            val icon = if (showPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                            val icon =
+                                if (showPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                             IconButton(onClick = { showPassword = !showPassword }) {
                                 Icon(imageVector = icon, contentDescription = null, tint = textColor)
                             }
@@ -137,7 +135,6 @@ class SignupActivity : ComponentActivity() {
 
                     Spacer(Modifier.height(16.dp))
 
-                    // --- Confirm Password Field ---
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
@@ -145,7 +142,8 @@ class SignupActivity : ComponentActivity() {
                         visualTransformation = if (showConfirmPassword) VisualTransformation.None else PasswordVisualTransformation(),
                         modifier = Modifier.fillMaxWidth(),
                         trailingIcon = {
-                            val icon = if (showConfirmPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                            val icon =
+                                if (showConfirmPassword) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
                             IconButton(onClick = { showConfirmPassword = !showConfirmPassword }) {
                                 Icon(imageVector = icon, contentDescription = null, tint = textColor)
                             }
@@ -161,51 +159,75 @@ class SignupActivity : ComponentActivity() {
 
                     Spacer(Modifier.height(24.dp))
 
-                    // --- Sign Up Button ---
                     Button(
                         onClick = {
-                            message = ""
-                            when {
-                                email.isBlank() -> message = "Enter your email"
-                                !email.endsWith("@vitstudent.ac.in") -> message = "Only VIT student emails are allowed"
-                                password.isBlank() -> message = "Enter your password"
-                                confirmPassword.isBlank() -> message = "Enter confirm password"
-                                password.length < 8 -> message = "Password must be at least 8 characters"
-                                !password.contains(Regex("[A-Z]")) -> message = "Password must contain an uppercase letter"
-                                !password.contains(Regex("[a-z]")) -> message = "Password must contain a lowercase letter"
-                                !password.contains(Regex("[0-9]")) -> message = "Password must contain a number"
-                                !password.contains(Regex("[!@#\$%^&+=?-]")) -> message = "Password must contain a special character"
-                                password != confirmPassword -> message = "Passwords do not match"
-                                else -> {
-                                    // ✅ Firebase Sign Up Logic
-                                    auth.createUserWithEmailAndPassword(email, password)
-                                        .addOnSuccessListener {
-                                            auth.currentUser?.sendEmailVerification()
-                                                ?.addOnSuccessListener {
-                                                    Toast.makeText(
-                                                        this@SignupActivity,
-                                                        "Verification email sent! Please verify before logging in.",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
+                            if (email.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                                Toast.makeText(this@SignupActivity, "All fields are required", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            if (!email.endsWith("@vitstudent.ac.in")) {
+                                Toast.makeText(this@SignupActivity, "Only VIT student emails are allowed", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            if (password != confirmPassword) {
+                                Toast.makeText(this@SignupActivity, "Passwords do not match", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            if (password.length < 8 ||
+                                !password.contains(Regex("[A-Z]")) ||
+                                !password.contains(Regex("[a-z]")) ||
+                                !password.contains(Regex("[0-9]")) ||
+                                !password.contains(Regex("[!@#\$%^&+=?-]"))
+                            ) {
+                                Toast.makeText(
+                                    this@SignupActivity,
+                                    "Password must have 8+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                return@Button
+                            }
 
-                                                    val intent = Intent(
-                                                        this@SignupActivity,
-                                                        VerifyEmailActivity::class.java
-                                                    )
-                                                    intent.putExtra("role", "Student")
-                                                    intent.putExtra("email", email)
-                                                    startActivity(intent)
-                                                    finish()
-                                                }
-                                                ?.addOnFailureListener {
-                                                    message = "Failed to send verification email: ${it.message}"
-                                                }
+                            isLoading = true
+
+                            auth.createUserWithEmailAndPassword(email, password)
+                                .addOnSuccessListener {
+                                    val user = auth.currentUser
+
+                                    user?.sendEmailVerification()
+                                        ?.addOnSuccessListener {
+                                            Toast.makeText(
+                                                this@SignupActivity,
+                                                "Verification email sent! Please check your inbox.",
+                                                Toast.LENGTH_LONG
+                                            ).show()
+                                            val intent = Intent(
+                                                this@SignupActivity,
+                                                VerifyEmailActivity::class.java
+                                            )
+                                            intent.putExtra("email", email)
+                                            startActivity(intent)
+                                            finish()
                                         }
-                                        .addOnFailureListener {
-                                            message = "Signup failed: ${it.message}"
+                                        ?.addOnFailureListener { e ->
+                                            user?.delete()?.addOnCompleteListener {
+                                                Toast.makeText(
+                                                    this@SignupActivity,
+                                                    "Invalid email. Could not send verification: ${e.message}",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
                                         }
                                 }
-                            }
+                                .addOnFailureListener {
+                                    Toast.makeText(
+                                        this@SignupActivity,
+                                        "Signup failed: ${it.message}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                                .addOnCompleteListener {
+                                    isLoading = false
+                                }
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -216,12 +238,18 @@ class SignupActivity : ComponentActivity() {
                             contentColor = PremiumAqua
                         )
                     ) {
-                        Text("Sign Up", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                color = PremiumAqua,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Text("Sign Up", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
 
                     Spacer(Modifier.height(12.dp))
 
-                    // --- Back to Login ---
                     Text(
                         text = "Back to Login",
                         color = textColor,
@@ -232,17 +260,6 @@ class SignupActivity : ComponentActivity() {
                         },
                         fontWeight = FontWeight.SemiBold
                     )
-
-                    Spacer(Modifier.height(16.dp))
-
-                    if (message.isNotEmpty()) {
-                        Text(
-                            text = message,
-                            color = Color.Red,
-                            fontSize = 14.sp,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
                 }
             }
         }
