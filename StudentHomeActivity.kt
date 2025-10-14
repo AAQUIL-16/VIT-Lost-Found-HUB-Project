@@ -1207,7 +1207,7 @@ class StudentHomeActivity : ComponentActivity() {
 
                                             db.collection("lost_and_found").add(data)
                                                 .addOnSuccessListener {
-                                                    message = "Item uploaded successfully!"
+                                                    message = " "
                                                     Toast.makeText(
                                                         this@StudentHomeActivity,
                                                         "Item uploaded successfully!",
