@@ -786,43 +786,124 @@ class AdminHomeActivity : ComponentActivity() {
     @Composable
     fun HistoryDialog(title: String, items: List<HistoryItem>, colorScheme: ColorScheme, onClose: () -> Unit) {
         Dialog(onDismissRequest = onClose) {
-            Card(modifier = Modifier.fillMaxWidth(0.95f).fillMaxHeight(0.65f), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = colorScheme.surface, contentColor = colorScheme.onSurface)) {
-                Column(modifier = Modifier.fillMaxSize().padding(20.dp)) {
-                    Text(title, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.95f)
+                    .fillMaxHeight(0.65f),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = colorScheme.surface,
+                    contentColor = colorScheme.onSurface
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                ) {
+                    Text(
+                        title,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.primary
+                    )
+
                     Spacer(Modifier.height(12.dp))
+
                     if (items.isEmpty()) {
-                        Box(modifier = Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
-                            Text("No history found", fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = colorScheme.onSurface)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                "No history found", 
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, 
+                                color = colorScheme.onSurface
+                            )
                         }
                     } else {
                         LazyColumn(modifier = Modifier.weight(1f)) {
                             items(items) { item ->
-                                Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), elevation = CardDefaults.cardElevation(2.dp)) {
-                                    Row(modifier = Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(item.title, fontWeight = FontWeight.Medium, color = colorScheme.onSurface, fontSize = 14.sp)
-                                            Text(
-                                                item.action,
-                                                color = when (item.action) {
-                                                    "Approved" -> Color(0xFF4CAF50)
-                                                    "Given to Student" -> Color(0xFF2196F3)
-                                                    "Rejected" -> Color(0xFFF44336)
-                                                    else -> colorScheme.onSurface
-                                                },
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                            if (item.claimerEmail.isNotEmpty()) Text("Claimed by: ${item.claimerEmail}", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
-                                            if (item.uploaderEmail.isNotEmpty()) Text("Uploaded by: ${item.uploaderEmail}", fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    elevation = CardDefaults.cardElevation(2.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = when (item.action) {
+                                            "Approved" -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                                            "Given to Student" -> Color(0xFF2196F3).copy(alpha = 0.1f)
+                                            "Rejected" -> Color(0xFFF44336).copy(alpha = 0.1f)
+                                            else -> colorScheme.surface
                                         }
-                                        Text(SimpleDateFormat("MMM dd, yyyy HH:mm").format(Date(item.timestamp)), fontSize = 12.sp, color = colorScheme.onSurfaceVariant)
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween
+                                        ) {
+                                            Text(
+                                                item.title, 
+                                                fontWeight = FontWeight.Medium, 
+                                                color = colorScheme.onSurface, 
+                                                fontSize = 14.sp
+                                            )
+                                            Text(
+                                                SimpleDateFormat("MMM dd, yyyy HH:mm")
+                                                    .format(Date(item.timestamp)),
+                                                fontSize = 12.sp,
+                                                color = colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        Spacer(Modifier.height(4.dp))
+                                        Text(
+                                            item.action,
+                                            color = when (item.action) {
+                                                "Approved" -> Color(0xFF4CAF50)
+                                                "Given to Student" -> Color(0xFF2196F3)
+                                                "Rejected" -> Color(0xFFF44336)
+                                                else -> colorScheme.onSurface
+                                            },
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        if (item.claimerEmail.isNotEmpty()) {
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                "Claimed by: ${item.claimerEmail}",
+                                                fontSize = 11.sp,
+                                                color = colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        if (item.uploaderEmail.isNotEmpty()) {
+                                            Spacer(Modifier.height(2.dp))
+                                            Text(
+                                                "Uploaded by: ${item.uploaderEmail}",
+                                                fontSize = 11.sp,
+                                                color = colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = onClose, modifier = Modifier.align(Alignment.End)) { Text("Close") }
+
+                    Button(
+                        onClick = onClose,
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("Close")
+                    }
                 }
             }
         }
@@ -830,8 +911,27 @@ class AdminHomeActivity : ComponentActivity() {
 
     @Composable
     fun PremiumAdminItemCard(item: LostFoundItem, colorScheme: ColorScheme, onImageClick: (String, String) -> Unit, onDelete: () -> Unit) {
-        Card(modifier = Modifier.fillMaxWidth().height(380.dp).padding(horizontal = 4.dp, vertical = 6.dp).shadow(16.dp, RoundedCornerShape(16.dp), clip = false, ambientColor = colorScheme.primary, spotColor = colorScheme.primary), shape = RoundedCornerShape(16.dp), colors = CardDefaults.cardColors(containerColor = colorScheme.surface, contentColor = colorScheme.onSurface)) {
-            Box(modifier = Modifier.fillMaxSize().background(brush = Brush.verticalGradient(colors = listOf(colorScheme.surface, colorScheme.surface.copy(alpha = 0.8f))))) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(380.dp)
+                .padding(horizontal = 4.dp, vertical = 6.dp)
+                .shadow(16.dp, RoundedCornerShape(16.dp), clip = false, ambientColor = colorScheme.primary, spotColor = colorScheme.primary),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = colorScheme.surface, contentColor = colorScheme.onSurface)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                colorScheme.surface,
+                                colorScheme.surface.copy(alpha = 0.8f)
+                            )
+                        )
+                    )
+            ) {
                 // Delete button for all items
                 IconButton(
                     onClick = onDelete,
@@ -848,49 +948,135 @@ class AdminHomeActivity : ComponentActivity() {
                     )
                 }
 
-                Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-                    Text(item.title, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = colorScheme.primary, modifier = Modifier.fillMaxWidth(), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        item.title,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth(),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Spacer(Modifier.height(8.dp))
-                    Text(item.description, color = colorScheme.onSurface.copy(alpha = 0.8f), lineHeight = 18.sp, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        item.description,
+                        color = colorScheme.onSurface.copy(alpha = 0.8f),
+                        lineHeight = 18.sp,
+                        fontSize = 14.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
                     Spacer(Modifier.height(8.dp))
-                    Box(modifier = Modifier.wrapContentWidth().clip(RoundedCornerShape(10.dp)).background(when (item.status) {
-                        "Lost" -> Color(0xFFF44336).copy(alpha = 0.2f)
-                        "Found" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                        "Claimed" -> Color(0xFFFF9800).copy(alpha = 0.2f)
-                        else -> colorScheme.primary.copy(alpha = 0.2f)
-                    }).padding(horizontal = 12.dp, vertical = 6.dp)) {
-                        Text(item.status, color = when (item.status) {
-                            "Lost" -> Color(0xFFF44336)
-                            "Found" -> Color(0xFF4CAF50)
-                            "Claimed" -> Color(0xFFFF9800)
-                            else -> colorScheme.primary
-                        }, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+                    Box(
+                        modifier = Modifier
+                            .wrapContentWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                when (item.status) {
+                                    "Lost" -> Color(0xFFF44336).copy(alpha = 0.2f)
+                                    "Found" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                    "Claimed" -> Color(0xFFFF9800).copy(alpha = 0.2f)
+                                    else -> colorScheme.primary.copy(alpha = 0.2f)
+                                }
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            item.status,
+                            color = when (item.status) {
+                                "Lost" -> Color(0xFFF44336)
+                                "Found" -> Color(0xFF4CAF50)
+                                "Claimed" -> Color(0xFFFF9800)
+                                else -> colorScheme.primary
+                            },
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
+                        )
                     }
                     Spacer(Modifier.height(8.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, "Location", tint = colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            "Location",
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Spacer(Modifier.width(4.dp))
-                        Text(item.location, color = colorScheme.onSurface.copy(alpha = 0.7f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            item.location,
+                            color = colorScheme.onSurface.copy(alpha = 0.7f),
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     Spacer(Modifier.height(6.dp))
                     // Updated to show uploader email prominently
-                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Person, "Uploader", tint = colorScheme.primary, modifier = Modifier.size(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Person,
+                            "Uploader",
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
                         Spacer(Modifier.width(4.dp))
-                        Text("Uploader: ${item.uploaderEmail ?: "Unknown"}", fontSize = 14.sp, color = colorScheme.onSurface.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            "Uploader: ${item.uploaderEmail ?: "Unknown"}",
+                            fontSize = 14.sp,
+                            color = colorScheme.onSurface.copy(alpha = 0.8f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                     if (item.imageUrl.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
-                        Box(modifier = Modifier.fillMaxWidth().height(140.dp).clip(RoundedCornerShape(12.dp)).shadow(4.dp, RoundedCornerShape(12.dp)).clickable {
-                            onImageClick(item.imageUrl, "Uploaded by: ${item.uploaderEmail ?: "Unknown"}")
-                        }) {
-                            AsyncImage(model = item.imageUrl, "Item Image", modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(140.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .shadow(4.dp, RoundedCornerShape(12.dp))
+                                .clickable {
+                                    onImageClick(item.imageUrl, "Uploaded by: ${item.uploaderEmail ?: "Unknown"}")
+                                }
+                        ) {
+                            AsyncImage(
+                                model = item.imageUrl,
+                                "Item Image",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
                         }
                     }
                     Spacer(Modifier.height(12.dp))
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text(SimpleDateFormat("MMM dd, HH:mm").format(Date(item.timestamp)), fontSize = 12.sp, color = colorScheme.onSurface.copy(alpha = 0.5f))
-                        if (item.status == "Claimed") Text("✓ Claimed", color = Color(0xFFFF9800), fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            SimpleDateFormat("MMM dd, HH:mm").format(Date(item.timestamp)),
+                            fontSize = 12.sp,
+                            color = colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                        if (item.status == "Claimed") Text(
+                            "✓ Claimed",
+                            color = Color(0xFFFF9800),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
@@ -907,7 +1093,10 @@ class AdminHomeActivity : ComponentActivity() {
         onImageClick: (String, String) -> Unit
     ) {
         Card(
-            modifier = Modifier.fillMaxWidth().padding(4.dp).shadow(8.dp, RoundedCornerShape(16.dp), clip = false),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(4.dp)
+                .shadow(8.dp, RoundedCornerShape(16.dp), clip = false),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
                 containerColor = when (claim.claimStatus) {
@@ -919,38 +1108,91 @@ class AdminHomeActivity : ComponentActivity() {
             )
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(claim.title, fontWeight = FontWeight.Bold, fontSize = 18.sp, color = colorScheme.primary)
+                Text(
+                    claim.title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = colorScheme.primary
+                )
                 Spacer(Modifier.height(8.dp))
-                Text(claim.description, color = colorScheme.onSurface.copy(alpha = 0.8f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    claim.description,
+                    color = colorScheme.onSurface.copy(alpha = 0.8f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Spacer(Modifier.height(8.dp))
                 // Updated to show uploader email prominently
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Upload, null, tint = colorScheme.primary, modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Default.Upload,
+                        null,
+                        tint = colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(Modifier.width(4.dp))
-                    Text("Uploader: ${claim.uploaderName} (${claim.uploaderEmail})", fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                    Text(
+                        "Uploader: ${claim.uploaderName} (${claim.uploaderEmail})",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 14.sp
+                    )
                 }
                 Spacer(Modifier.height(4.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Person, null, tint = colorScheme.primary, modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Default.Person,
+                        null,
+                        tint = colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
                     Spacer(Modifier.width(4.dp))
-                    Text("Claimed by: ${claim.claimerName} (${claim.claimerEmail})", fontSize = 13.sp, color = colorScheme.onSurface.copy(alpha = 0.8f))
+                    Text(
+                        "Claimed by: ${claim.claimerName} (${claim.claimerEmail})",
+                        fontSize = 13.sp,
+                        color = colorScheme.onSurface.copy(alpha = 0.8f)
+                    )
                 }
                 Spacer(Modifier.height(8.dp))
-                Text("Claim Reason: ${claim.claimDescription}", fontSize = 14.sp, color = colorScheme.onSurface.copy(alpha = 0.8f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    "Claim Reason: ${claim.claimDescription}",
+                    fontSize = 14.sp,
+                    color = colorScheme.onSurface.copy(alpha = 0.8f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
                 Spacer(Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, null, tint = colorScheme.primary, modifier = Modifier.size(14.dp))
+                        Icon(
+                            Icons.Default.LocationOn,
+                            null,
+                            tint = colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
                         Spacer(Modifier.width(4.dp))
-                        Text(claim.location, color = colorScheme.onSurface.copy(alpha = 0.7f), fontSize = 13.sp)
+                        Text(
+                            claim.location,
+                            color = colorScheme.onSurface.copy(alpha = 0.7f),
+                            fontSize = 13.sp
+                        )
                     }
-                    Box(modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(when (claim.claimStatus) {
-                        "Pending" -> Color(0xFFFF9800).copy(alpha = 0.2f)
-                        "Approved" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                        "Given" -> Color(0xFF2196F3).copy(alpha = 0.2f)
-                        "Rejected" -> Color(0xFFF44336).copy(alpha = 0.2f)
-                        else -> colorScheme.primary.copy(alpha = 0.2f)
-                    }).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                when (claim.claimStatus) {
+                                    "Pending" -> Color(0xFFFF9800).copy(alpha = 0.2f)
+                                    "Approved" -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                    "Given" -> Color(0xFF2196F3).copy(alpha = 0.2f)
+                                    "Rejected" -> Color(0xFFF44336).copy(alpha = 0.2f)
+                                    else -> colorScheme.primary.copy(alpha = 0.2f)
+                                }
+                            )
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
                         Text(
                             claim.claimStatus,
                             color = when (claim.claimStatus) {
@@ -966,7 +1208,11 @@ class AdminHomeActivity : ComponentActivity() {
                     }
                 }
                 Spacer(Modifier.height(8.dp))
-                Text(SimpleDateFormat("MMM dd, yyyy HH:mm").format(Date(claim.timestamp)), fontSize = 12.sp, color = colorScheme.onSurface.copy(alpha = 0.5f))
+                Text(
+                    SimpleDateFormat("MMM dd, yyyy HH:mm").format(Date(claim.timestamp)),
+                    fontSize = 12.sp,
+                    color = colorScheme.onSurface.copy(alpha = 0.5f)
+                )
                 if (claim.imageUrl.isNotEmpty()) {
                     Spacer(Modifier.height(12.dp))
                     AsyncImage(
@@ -986,7 +1232,10 @@ class AdminHomeActivity : ComponentActivity() {
                 when (claim.claimStatus) {
                     "Pending" -> {
                         Spacer(Modifier.height(12.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
                             Button(
                                 onClick = { onApprove?.invoke() },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
@@ -1097,7 +1346,7 @@ class AdminHomeActivity : ComponentActivity() {
                         val uploaderNotification = mapOf(
                             "userId" to claim.uploaderEmail,
                             "title" to "Item Claim Approved ✅",
-                            "message" to "The item '${claim.title}' has been claimed by ${claim.claimerName}. The claim was approved.",
+                            "message" to "The item '${claim.title}' has been claimed by ${claim.claimerName} (${claim.claimerEmail}). The claim was approved.",
                             "type" to "item_claimed",
                             "read" to false,
                             "timestamp" to System.currentTimeMillis(),
@@ -1186,14 +1435,15 @@ class AdminHomeActivity : ComponentActivity() {
                         )
                         db.collection("notifications").add(notification)
 
-                        // ADDED: Notification to uploader
+                        // FIXED: Proper notification to uploader with claimer name and email
                         val uploaderNotification = mapOf(
                             "userId" to claim.uploaderEmail,
                             "title" to "Item Successfully Returned ✅",
-                            "message" to "The item '${claim.title}' has been successfully given to ${claim.claimerName}.",
+                            "message" to "The item '${claim.title}' has been successfully given to ${claim.claimerName} (${claim.claimerEmail}).",
                             "type" to "item_returned",
                             "read" to false,
                             "timestamp" to System.currentTimeMillis(),
+                            "claimId" to claim.id,
                             "itemId" to claim.itemId
                         )
                         db.collection("notifications").add(uploaderNotification)
