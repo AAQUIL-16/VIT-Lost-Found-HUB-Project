@@ -79,7 +79,8 @@ data class HistoryItem(
     val uploaderEmail: String = "",
     val claimerEmail: String = "",
     val claimStatus: String = "", // To track status for color coding
-    val adminNotes: String = ""
+    val adminNotes: String = "",
+    val itemId: String = "" // ADDED: To uniquely identify each claim
 )
 
 data class ClaimRequest(
@@ -223,7 +224,7 @@ class StudentHomeActivity : ComponentActivity() {
         var claimHistory by remember { mutableStateOf(listOf<HistoryItem>()) }
         var uploadHistory by remember { mutableStateOf(listOf<HistoryItem>()) }
 
-        // Notification state
+        // Notification state - ONLY CLAIM-RELATED NOTIFICATIONS
         var notifications by remember { mutableStateOf(listOf<Notification>()) }
         var unreadCount by remember { mutableStateOf(0) }
         var showNotifications by remember { mutableStateOf(false) }
@@ -254,12 +255,13 @@ class StudentHomeActivity : ComponentActivity() {
             }
         }
 
-        // Fetch notifications
+        // Fetch notifications - ONLY CLAIM-RELATED NOTIFICATIONS FOR CLAIMER
         LaunchedEffect(Unit) {
             val currentUserEmail = auth.currentUser?.email
             if (currentUserEmail != null) {
                 db.collection("notifications")
                     .whereEqualTo("userId", currentUserEmail)
+                    .whereIn("type", listOf("claim_approved", "claim_rejected", "item_given"))
                     .addSnapshotListener { snapshot, e ->
                         val notificationList = mutableListOf<Notification>()
                         snapshot?.documents?.forEach { doc ->
@@ -282,7 +284,7 @@ class StudentHomeActivity : ComponentActivity() {
             }
         }
 
-        // Fetch claim requests
+        // Fetch claim requests - ENHANCED WITH REAL-TIME UPDATES
         LaunchedEffect(Unit) {
             db.collection("claims")
                 .addSnapshotListener { snapshot, e ->
@@ -303,7 +305,9 @@ class StudentHomeActivity : ComponentActivity() {
                             claimDescription = doc.getString("claimDescription") ?: "",
                             claimStatus = doc.getString("claimStatus") ?: "Pending",
                             timestamp = doc.getLong("timestamp") ?: 0,
-                            adminNotes = doc.getString("adminNotes") ?: ""
+                            adminNotes = doc.getString("adminNotes") ?: "",
+                            adminActionTimestamp = doc.getLong("adminActionTimestamp") ?: 0,
+                            adminActionBy = doc.getString("adminActionBy") ?: ""
                         )
                         claimList.add(claim)
                     }
@@ -382,7 +386,7 @@ class StudentHomeActivity : ComponentActivity() {
                     deleteHistory = historyList.sortedByDescending { it.timestamp }
                 }
 
-            // Fetch claim history
+            // Fetch claim history - FIXED: PROPERLY HANDLES UNIQUE CLAIMS WITH SAME TITLE
             db.collection("claim_history")
                 .whereEqualTo("claimerEmail", currentUserEmail)
                 .addSnapshotListener { snapshot, e ->
@@ -396,7 +400,8 @@ class StudentHomeActivity : ComponentActivity() {
                             claimerEmail = doc.getString("claimerEmail") ?: currentUserEmail,
                             uploaderEmail = doc.getString("uploaderEmail") ?: "",
                             claimStatus = doc.getString("claimStatus") ?: "",
-                            adminNotes = doc.getString("adminNotes") ?: ""
+                            adminNotes = doc.getString("adminNotes") ?: "",
+                            itemId = doc.getString("itemId") ?: "" // ADDED: Store itemId for uniqueness
                         )
                         historyList.add(historyItem)
                     }
@@ -645,12 +650,13 @@ class StudentHomeActivity : ComponentActivity() {
                                                 modifier = Modifier.background(Color.Transparent)
                                             )
 
-                                            Divider()
+
                                         }
 
                                         // Nested history items
                                         if (historyExpanded) {
                                             Column {
+                                                Divider()
                                                 listOf(
                                                     Triple(Icons.Default.CloudUpload, "Upload History") { showUploadHistory = true },
                                                     Triple(Icons.Default.Delete, "Delete History") { showDeleteHistory = true },
@@ -674,6 +680,7 @@ class StudentHomeActivity : ComponentActivity() {
                                                 }
                                             }
                                         }
+                                        Divider()
                                         DropdownMenuItem(
                                             text = {
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -884,7 +891,7 @@ class StudentHomeActivity : ComponentActivity() {
                                                 Toast.makeText(this@StudentHomeActivity, "Item deleted successfully", Toast.LENGTH_SHORT).show()
                                             }
                                     },
-                                    onClaim = { description ->
+                                    onClaim = { claimDescription ->
                                         val currentUser = auth.currentUser
                                         if (currentUser != null) {
                                             val claimRecord = hashMapOf(
@@ -898,7 +905,7 @@ class StudentHomeActivity : ComponentActivity() {
                                                 "uploaderName" to item.uploaderName,
                                                 "claimerEmail" to currentUser.email,
                                                 "claimerName" to (userProfile?.name ?: userProfile?.username ?: currentUser.email ?: "Unknown"),
-                                                "claimDescription" to description,
+                                                "claimDescription" to claimDescription,
                                                 "claimStatus" to "Pending",
                                                 "timestamp" to System.currentTimeMillis(),
                                                 "adminNotes" to "",
@@ -908,7 +915,7 @@ class StudentHomeActivity : ComponentActivity() {
 
                                             db.collection("claims").add(claimRecord)
                                                 .addOnSuccessListener { docRef ->
-                                                    // Add to claim history with "Claim Sent" status
+                                                    // FIXED: Add to claim history with proper unique identification
                                                     val historyRecord = hashMapOf(
                                                         "title" to item.title,
                                                         "action" to "Claim Sent",
@@ -916,7 +923,8 @@ class StudentHomeActivity : ComponentActivity() {
                                                         "timestamp" to System.currentTimeMillis(),
                                                         "claimerEmail" to currentUser.email,
                                                         "uploaderEmail" to item.uploaderEmail,
-                                                        "adminNotes" to ""
+                                                        "adminNotes" to "",
+                                                        "itemId" to item.id // ADDED: Store itemId for uniqueness
                                                     )
                                                     db.collection("claim_history").add(historyRecord)
 
@@ -924,7 +932,7 @@ class StudentHomeActivity : ComponentActivity() {
                                                     val notificationData = hashMapOf(
                                                         "userId" to item.uploaderEmail,
                                                         "title" to "New Claim Request",
-                                                        "message" to "The item '${item.title}' has been claimed by ${currentUser.email}",
+                                                        "message" to "Your item '${item.title}' has been claimed by ${currentUser.email}. Please wait for admin approval.",
                                                         "type" to "claim_request",
                                                         "read" to false,
                                                         "timestamp" to System.currentTimeMillis(),
@@ -951,7 +959,7 @@ class StudentHomeActivity : ComponentActivity() {
                 }
             }
 
-            // Premium Upload Form Dialog
+            // Premium Upload Form Dialog - FIXED CANCEL BUTTON
             if (showForm) {
                 Dialog(
                     onDismissRequest = {
@@ -997,7 +1005,6 @@ class StudentHomeActivity : ComponentActivity() {
                             }
 
                             // SCROLLABLE CONTENT
-                            // SCROLLABLE CONTENT
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
@@ -1008,7 +1015,7 @@ class StudentHomeActivity : ComponentActivity() {
                                     onValueChange = { title = it },
                                     label = { Text("Title *", color = colorScheme.onSurface) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    enabled = !isUploading, // Add this line
+                                    enabled = !isUploading,
                                     colors = TextFieldDefaults.colors(
                                         focusedTextColor = colorScheme.onSurface,
                                         unfocusedTextColor = colorScheme.onSurface,
@@ -1023,7 +1030,7 @@ class StudentHomeActivity : ComponentActivity() {
                                     onValueChange = { description = it },
                                     label = { Text("Description *", color = colorScheme.onSurface) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    enabled = !isUploading, // Add this line
+                                    enabled = !isUploading,
                                     colors = TextFieldDefaults.colors(
                                         focusedTextColor = colorScheme.onSurface,
                                         unfocusedTextColor = colorScheme.onSurface,
@@ -1038,7 +1045,7 @@ class StudentHomeActivity : ComponentActivity() {
                                     onValueChange = { location = it },
                                     label = { Text("Location *", color = colorScheme.onSurface) },
                                     modifier = Modifier.fillMaxWidth(),
-                                    enabled = !isUploading, // Add this line
+                                    enabled = !isUploading,
                                     colors = TextFieldDefaults.colors(
                                         focusedTextColor = colorScheme.onSurface,
                                         unfocusedTextColor = colorScheme.onSurface,
@@ -1061,8 +1068,8 @@ class StudentHomeActivity : ComponentActivity() {
                                             .weight(1f)
                                             .padding(end = 4.dp)
                                             .clickable(
-                                                enabled = !isUploading, // Add this line
-                                                onClick = { if (!isUploading) status = "Found" } // Add condition
+                                                enabled = !isUploading,
+                                                onClick = { if (!isUploading) status = "Found" }
                                             ),
                                         elevation = CardDefaults.cardElevation(if (status == "Found") 8.dp else 2.dp)
                                     ) {
@@ -1072,8 +1079,8 @@ class StudentHomeActivity : ComponentActivity() {
                                         ) {
                                             RadioButton(
                                                 selected = status == "Found",
-                                                onClick = { if (!isUploading) status = "Found" }, // Add condition
-                                                enabled = !isUploading, // Add this line
+                                                onClick = { if (!isUploading) status = "Found" },
+                                                enabled = !isUploading,
                                                 colors = RadioButtonDefaults.colors(
                                                     selectedColor = Color(0xFF4CAF50)
                                                 )
@@ -1093,8 +1100,8 @@ class StudentHomeActivity : ComponentActivity() {
                                             .weight(1f)
                                             .padding(start = 4.dp)
                                             .clickable(
-                                                enabled = !isUploading, // Add this line
-                                                onClick = { if (!isUploading) status = "Lost" } // Add condition
+                                                enabled = !isUploading,
+                                                onClick = { if (!isUploading) status = "Lost" }
                                             ),
                                         elevation = CardDefaults.cardElevation(if (status == "Lost") 8.dp else 2.dp)
                                     ) {
@@ -1104,8 +1111,8 @@ class StudentHomeActivity : ComponentActivity() {
                                         ) {
                                             RadioButton(
                                                 selected = status == "Lost",
-                                                onClick = { if (!isUploading) status = "Lost" }, // Add condition
-                                                enabled = !isUploading, // Add this line
+                                                onClick = { if (!isUploading) status = "Lost" },
+                                                enabled = !isUploading,
                                                 colors = RadioButtonDefaults.colors(
                                                     selectedColor = Color(0xFFF44336)
                                                 )
@@ -1124,12 +1131,12 @@ class StudentHomeActivity : ComponentActivity() {
 
                                 Button(
                                     onClick = {
-                                        if (!isUploading) { // Add condition
+                                        if (!isUploading) {
                                             launcher.launch("image/*")
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth(),
-                                    enabled = !isUploading // Add this line
+                                    enabled = !isUploading
                                 ) {
                                     Text(if (selectedImageUri != null) "Change Image" else "Select Image *")
                                 }
@@ -1158,26 +1165,24 @@ class StudentHomeActivity : ComponentActivity() {
                             }
                             Spacer(Modifier.height(16.dp))
 
-                            // SUBMIT BUTTON - ALWAYS VISIBLE AT BOTTOM
-                            // SUBMIT BUTTON - ALWAYS VISIBLE AT BOTTOM
+                            // SUBMIT BUTTON - ALWAYS VISIBLE AT BOTTOM - FIXED CANCEL BUTTON
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 TextButton(
                                     onClick = {
-                                        if (!isUploading) { // Add condition
-                                            showForm = false
-                                            title = ""
-                                            description = ""
-                                            location = ""
-                                            status = ""
-                                            message = ""
-                                            selectedImageUri = null
-                                            isUploading = false
-                                        }
+                                        // FIXED: Properly reset all form fields when cancel is clicked
+                                        showForm = false
+                                        title = ""
+                                        description = ""
+                                        location = ""
+                                        status = ""
+                                        message = ""
+                                        selectedImageUri = null
+                                        isUploading = false
                                     },
-                                    enabled = !isUploading // Add this line
+                                    enabled = !isUploading
                                 ) {
                                     Text("Cancel", color = colorScheme.onSurface)
                                 }
@@ -1213,6 +1218,8 @@ class StudentHomeActivity : ComponentActivity() {
                                                         "Item uploaded successfully!",
                                                         Toast.LENGTH_SHORT
                                                     ).show()
+
+                                                    // REMOVED: Upload success notification for uploader
                                                     showForm = false
                                                     title = ""
                                                     description = ""
@@ -1295,13 +1302,12 @@ class StudentHomeActivity : ComponentActivity() {
             }
 
             // User Profile Dialog
-            // User Profile Dialog - ENHANCED VERSION
             if (showProfile) {
                 Dialog(onDismissRequest = { showProfile = false }) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth(0.95f)
-                            .fillMaxHeight(0.85f), // Increased height for better spacing
+                            .fillMaxHeight(0.85f),
                         shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(
                             containerColor = colorScheme.surface,
@@ -1616,7 +1622,7 @@ class StudentHomeActivity : ComponentActivity() {
                 HistoryDialog("Claim History", claimHistory, colorScheme) { showClaimHistory = false }
             }
 
-            // Notifications Dialog
+            // Notifications Dialog - ONLY CLAIM-RELATED NOTIFICATIONS
             if (showNotifications) {
                 Dialog(onDismissRequest = { showNotifications = false }) {
                     Card(
@@ -1640,7 +1646,7 @@ class StudentHomeActivity : ComponentActivity() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "Notifications",
+                                    "Claim Notifications",
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = colorScheme.primary
@@ -1682,7 +1688,7 @@ class StudentHomeActivity : ComponentActivity() {
                                         )
                                         Spacer(Modifier.height(8.dp))
                                         Text(
-                                            "No notifications yet",
+                                            "No claim notifications",
                                             color = colorScheme.onSurface.copy(alpha = 0.6f)
                                         )
                                     }
@@ -1785,7 +1791,7 @@ class StudentHomeActivity : ComponentActivity() {
         var claimDescription by remember { mutableStateOf("") }
         val context = LocalContext.current
 
-        // Check claim status - FIXED LOGIC
+        // Check claim status - FIXED: Uses itemId for unique identification
         LaunchedEffect(item.id, claimRequests) {
             val currentUserEmail = auth.currentUser?.email
             if (currentUserEmail != null) {
@@ -1801,7 +1807,7 @@ class StudentHomeActivity : ComponentActivity() {
                 .fillMaxWidth()
                 .height(420.dp)
                 .padding(horizontal = 4.dp, vertical = 6.dp)
-                .shadow(16.dp, RoundedCornerShape(16.dp)),
+                .shadow(16.dp, RoundedCornerShape(16.dp), clip = false, ambientColor = colorScheme.primary, spotColor = colorScheme.primary),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = colorScheme.surface, contentColor = colorScheme.onSurface),
         ) {
@@ -2320,4 +2326,3 @@ class StudentHomeActivity : ComponentActivity() {
         }
     }
 }
-
