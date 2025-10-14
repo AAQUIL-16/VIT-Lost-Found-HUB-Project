@@ -98,7 +98,7 @@ class LoginActivity : ComponentActivity() {
                             shape = RoundedCornerShape(20.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (selectedRole == "Student") roleButtonBgSelected else roleButtonBgUnselected,
-                                contentColor = if (selectedRole == "Student") Color(0xFF83C5BE) else textColor
+                                contentColor = if (selectedRole == "Student") Color(PremiumAqua) else textColor
                             )
                         ) { Text("Student") }
 
@@ -107,7 +107,7 @@ class LoginActivity : ComponentActivity() {
                             shape = RoundedCornerShape(20.dp),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = if (selectedRole == "Admin") roleButtonBgSelected else roleButtonBgUnselected,
-                                contentColor = if (selectedRole == "Admin") Color(0xFF83C5BE) else textColor
+                                contentColor = if (selectedRole == "Admin") Color(PremiumAqua) else textColor
                             )
                         ) { Text("Admin") }
                     }
