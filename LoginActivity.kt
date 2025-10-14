@@ -30,8 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 
-
-
 class LoginActivity : ComponentActivity() {
 
     private val auth = FirebaseAuth.getInstance()
@@ -43,13 +41,11 @@ class LoginActivity : ComponentActivity() {
             val focusManager = LocalFocusManager.current
             val isDarkTheme = isSystemInDarkTheme()
 
-            // NOTE: textColor set so it's BLACK only when system is in DARK theme,
-            // and WHITE otherwise (as you requested).
             val textColor = if (isDarkTheme) Color(0xFF000000) else Color.White
             val buttonBg = if (isDarkTheme) Color(0xFF000000) else Color.White
             val roleButtonBgSelected = if (isDarkTheme) Color(0xFF000000) else Color.White
-            val roleButtonBgUnselected = if (isDarkTheme) Color(0x33000000) else PremiumDarkAqua.copy(alpha = 0.3f)
-
+            val roleButtonBgUnselected =
+                if (isDarkTheme) Color(0x33000000) else PremiumDarkAqua.copy(alpha = 0.3f)
 
             val backgroundGradient = if (isDarkTheme)
                 Brush.verticalGradient(listOf(Color(0xFF121212), Color(0xFF000000)))
@@ -67,8 +63,12 @@ class LoginActivity : ComponentActivity() {
             var forgotEmail by remember { mutableStateOf("") }
             var sendingReset by remember { mutableStateOf(false) }
 
-            // Background gradient
-            Box( modifier = Modifier .fillMaxSize() .background( brush = Brush.verticalGradient( colors = listOf(PremiumAqua, PremiumDarkAqua) ) ) .padding(24.dp) ){
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(brush = Brush.verticalGradient(colors = listOf(PremiumAqua, PremiumDarkAqua)))
+                    .padding(24.dp)
+            ) {
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -76,7 +76,6 @@ class LoginActivity : ComponentActivity() {
                 ) {
                     Spacer(modifier = Modifier.height(40.dp))
 
-                    // Title
                     Text(
                         text = "VIT Lost & Found HUB",
                         fontSize = 32.sp,
@@ -90,7 +89,6 @@ class LoginActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(40.dp))
 
-                    // Role selector
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
@@ -116,7 +114,6 @@ class LoginActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(40.dp))
 
-                    // Email field
                     OutlinedTextField(
                         value = email,
                         onValueChange = {
@@ -151,7 +148,6 @@ class LoginActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Password field
                     OutlinedTextField(
                         value = password,
                         onValueChange = {
@@ -186,7 +182,6 @@ class LoginActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Forgot password link (Student only)
                     if (selectedRole == "Student") {
                         Text(
                             text = "Forgot Password?",
@@ -204,7 +199,7 @@ class LoginActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Login button
+                    // ✅ Login button with verification check
                     Button(
                         onClick = {
                             focusManager.clearFocus()
@@ -212,21 +207,46 @@ class LoginActivity : ComponentActivity() {
                             passwordError = ""
 
                             val trimmedEmail = email.trim().lowercase()
-                            if (trimmedEmail.isEmpty()) { emailError = "Enter your email"; return@Button }
-                            if (password.isEmpty()) { passwordError = "Enter your password"; return@Button }
+                            if (trimmedEmail.isEmpty()) {
+                                emailError = "Enter your email"
+                                return@Button
+                            }
+                            if (password.isEmpty()) {
+                                passwordError = "Enter your password"
+                                return@Button
+                            }
                             if (selectedRole == "Student" && !trimmedEmail.endsWith("@vitstudent.ac.in")) {
-                                emailError = "Only VIT student emails are allowed"; return@Button
+                                emailError = "Only VIT student emails are allowed"
+                                return@Button
                             }
                             if (selectedRole == "Admin" && !trimmedEmail.endsWith("@vit.ac.in")) {
-                                emailError = "Only VIT admin emails are allowed"; return@Button
+                                emailError = "Only VIT admin emails are allowed"
+                                return@Button
                             }
 
                             auth.signInWithEmailAndPassword(trimmedEmail, password)
                                 .addOnCompleteListener { task ->
                                     if (task.isSuccessful) {
-                                        if (selectedRole == "Student") startActivity(Intent(this@LoginActivity, StudentHomeActivity::class.java))
-                                        else startActivity(Intent(this@LoginActivity, AdminHomeActivity::class.java))
-                                        finish()
+                                        val user = auth.currentUser
+                                        user?.reload()?.addOnCompleteListener {
+                                            if (user != null && (selectedRole == "Admin" || user.isEmailVerified)) {
+                                                // ✅ Allow only verified students, admins bypass
+                                                if (selectedRole == "Student") {
+                                                    startActivity(Intent(this@LoginActivity, StudentHomeActivity::class.java))
+                                                } else {
+                                                    startActivity(Intent(this@LoginActivity, AdminHomeActivity::class.java))
+                                                }
+                                                finish()
+                                            } else {
+                                                // ❌ Not verified
+                                                auth.signOut()
+                                                Toast.makeText(
+                                                    this@LoginActivity,
+                                                    "Please verify your email before logging in.",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
+                                        }
                                     } else {
                                         passwordError = "Enter correct password"
                                     }
@@ -246,7 +266,6 @@ class LoginActivity : ComponentActivity() {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Sign up link (Student only)
                     if (selectedRole == "Student") {
                         Text(
                             text = "Don't have an account? Sign up",
@@ -259,7 +278,7 @@ class LoginActivity : ComponentActivity() {
                     }
                 }
 
-                // Forgot Password Dialog
+                // Forgot Password Dialog (unchanged)
                 if (showForgotDialog) {
                     var forgotEmailError by remember { mutableStateOf("") }
 
@@ -270,7 +289,7 @@ class LoginActivity : ComponentActivity() {
                             sendingReset = false
                             forgotEmailError = ""
                         },
-                        containerColor =PremiumAqua,
+                        containerColor = PremiumAqua,
                         title = {
                             Text(
                                 "Forgot Password",
