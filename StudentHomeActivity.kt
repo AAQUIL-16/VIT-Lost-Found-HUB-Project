@@ -924,7 +924,7 @@ class StudentHomeActivity : ComponentActivity() {
                                                     val notificationData = hashMapOf(
                                                         "userId" to item.uploaderEmail,
                                                         "title" to "New Claim Request",
-                                                        "message" to "Your item '${item.title}' has been claimed by ${currentUser.email}",
+                                                        "message" to "The item '${item.title}' has been claimed by ${currentUser.email}",
                                                         "type" to "claim_request",
                                                         "read" to false,
                                                         "timestamp" to System.currentTimeMillis(),
@@ -997,6 +997,7 @@ class StudentHomeActivity : ComponentActivity() {
                             }
 
                             // SCROLLABLE CONTENT
+                            // SCROLLABLE CONTENT
                             Column(
                                 modifier = Modifier
                                     .weight(1f)
@@ -1007,6 +1008,7 @@ class StudentHomeActivity : ComponentActivity() {
                                     onValueChange = { title = it },
                                     label = { Text("Title *", color = colorScheme.onSurface) },
                                     modifier = Modifier.fillMaxWidth(),
+                                    enabled = !isUploading, // Add this line
                                     colors = TextFieldDefaults.colors(
                                         focusedTextColor = colorScheme.onSurface,
                                         unfocusedTextColor = colorScheme.onSurface,
@@ -1021,6 +1023,7 @@ class StudentHomeActivity : ComponentActivity() {
                                     onValueChange = { description = it },
                                     label = { Text("Description *", color = colorScheme.onSurface) },
                                     modifier = Modifier.fillMaxWidth(),
+                                    enabled = !isUploading, // Add this line
                                     colors = TextFieldDefaults.colors(
                                         focusedTextColor = colorScheme.onSurface,
                                         unfocusedTextColor = colorScheme.onSurface,
@@ -1035,6 +1038,7 @@ class StudentHomeActivity : ComponentActivity() {
                                     onValueChange = { location = it },
                                     label = { Text("Location *", color = colorScheme.onSurface) },
                                     modifier = Modifier.fillMaxWidth(),
+                                    enabled = !isUploading, // Add this line
                                     colors = TextFieldDefaults.colors(
                                         focusedTextColor = colorScheme.onSurface,
                                         unfocusedTextColor = colorScheme.onSurface,
@@ -1056,7 +1060,10 @@ class StudentHomeActivity : ComponentActivity() {
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(end = 4.dp)
-                                            .clickable { status = "Found" },
+                                            .clickable(
+                                                enabled = !isUploading, // Add this line
+                                                onClick = { if (!isUploading) status = "Found" } // Add condition
+                                            ),
                                         elevation = CardDefaults.cardElevation(if (status == "Found") 8.dp else 2.dp)
                                     ) {
                                         Row(
@@ -1065,7 +1072,8 @@ class StudentHomeActivity : ComponentActivity() {
                                         ) {
                                             RadioButton(
                                                 selected = status == "Found",
-                                                onClick = { status = "Found" },
+                                                onClick = { if (!isUploading) status = "Found" }, // Add condition
+                                                enabled = !isUploading, // Add this line
                                                 colors = RadioButtonDefaults.colors(
                                                     selectedColor = Color(0xFF4CAF50)
                                                 )
@@ -1084,7 +1092,10 @@ class StudentHomeActivity : ComponentActivity() {
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(start = 4.dp)
-                                            .clickable { status = "Lost" },
+                                            .clickable(
+                                                enabled = !isUploading, // Add this line
+                                                onClick = { if (!isUploading) status = "Lost" } // Add condition
+                                            ),
                                         elevation = CardDefaults.cardElevation(if (status == "Lost") 8.dp else 2.dp)
                                     ) {
                                         Row(
@@ -1093,7 +1104,8 @@ class StudentHomeActivity : ComponentActivity() {
                                         ) {
                                             RadioButton(
                                                 selected = status == "Lost",
-                                                onClick = { status = "Lost" },
+                                                onClick = { if (!isUploading) status = "Lost" }, // Add condition
+                                                enabled = !isUploading, // Add this line
                                                 colors = RadioButtonDefaults.colors(
                                                     selectedColor = Color(0xFFF44336)
                                                 )
@@ -1111,8 +1123,13 @@ class StudentHomeActivity : ComponentActivity() {
                                 Spacer(Modifier.height(16.dp))
 
                                 Button(
-                                    onClick = { launcher.launch("image/*") },
-                                    modifier = Modifier.fillMaxWidth()
+                                    onClick = {
+                                        if (!isUploading) { // Add condition
+                                            launcher.launch("image/*")
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !isUploading // Add this line
                                 ) {
                                     Text(if (selectedImageUri != null) "Change Image" else "Select Image *")
                                 }
@@ -1139,9 +1156,9 @@ class StudentHomeActivity : ComponentActivity() {
                                     )
                                 }
                             }
-
                             Spacer(Modifier.height(16.dp))
 
+                            // SUBMIT BUTTON - ALWAYS VISIBLE AT BOTTOM
                             // SUBMIT BUTTON - ALWAYS VISIBLE AT BOTTOM
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -1149,15 +1166,18 @@ class StudentHomeActivity : ComponentActivity() {
                             ) {
                                 TextButton(
                                     onClick = {
-                                        showForm = false
-                                        title = ""
-                                        description = ""
-                                        location = ""
-                                        status = ""
-                                        message = ""
-                                        selectedImageUri = null
-                                        isUploading = false
-                                    }
+                                        if (!isUploading) { // Add condition
+                                            showForm = false
+                                            title = ""
+                                            description = ""
+                                            location = ""
+                                            status = ""
+                                            message = ""
+                                            selectedImageUri = null
+                                            isUploading = false
+                                        }
+                                    },
+                                    enabled = !isUploading // Add this line
                                 ) {
                                     Text("Cancel", color = colorScheme.onSurface)
                                 }
