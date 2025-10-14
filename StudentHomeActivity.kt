@@ -1646,7 +1646,7 @@ class StudentHomeActivity : ComponentActivity() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    "Claim Notifications",
+                                    "Notifications",
                                     fontSize = 20.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = colorScheme.primary
