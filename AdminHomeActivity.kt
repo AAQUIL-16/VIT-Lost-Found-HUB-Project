@@ -2,6 +2,7 @@ package com.example.myfirstapp
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -154,7 +155,11 @@ class AdminHomeActivity : ComponentActivity() {
             // Fetch claims and update all history lists
             db.collection("claims")
                 .addSnapshotListener { snapshot, e ->
-                    if (e != null) return@addSnapshotListener
+                    if (e != null) {
+                        Log.e("AdminHomeActivity", "Error fetching claims: ${e.message}")
+                        return@addSnapshotListener
+                    }
+
                     val claimsList = mutableListOf<ClaimRequest>()
                     snapshot?.documents?.forEach { doc ->
                         val claim = ClaimRequest(
@@ -178,7 +183,11 @@ class AdminHomeActivity : ComponentActivity() {
                     }
                     claimRequests = claimsList.sortedByDescending { it.timestamp }
 
-                    // Update all history lists from the same claims collection
+                    // DEBUG: Log the claims found
+                    Log.d("AdminHomeActivity", "Total claims found: ${claimsList.size}")
+                    Log.d("AdminHomeActivity", "Approved claims: ${claimsList.count { it.claimStatus == "Approved" }}")
+
+                    // Update approved history - FIXED: Only include Approved claims
                     approvedHistory = claimsList
                         .filter { it.claimStatus == "Approved" }
                         .map { claim ->
@@ -193,6 +202,7 @@ class AdminHomeActivity : ComponentActivity() {
                         }
                         .sortedByDescending { it.timestamp }
 
+                    // Update given history
                     givenHistory = claimsList
                         .filter { it.claimStatus == "Given" }
                         .map { claim ->
@@ -207,7 +217,7 @@ class AdminHomeActivity : ComponentActivity() {
                         }
                         .sortedByDescending { it.timestamp }
 
-                    // Add rejected history
+                    // Update rejected history
                     rejectedHistory = claimsList
                         .filter { it.claimStatus == "Rejected" }
                         .map { claim ->
@@ -221,9 +231,14 @@ class AdminHomeActivity : ComponentActivity() {
                             )
                         }
                         .sortedByDescending { it.timestamp }
+
+                    // DEBUG: Log the history counts
+                    Log.d("AdminHomeActivity", "Approved history items: ${approvedHistory.size}")
+                    Log.d("AdminHomeActivity", "Given history items: ${givenHistory.size}")
+                    Log.d("AdminHomeActivity", "Rejected history items: ${rejectedHistory.size}")
                 }
 
-            // Fetch ONLY claim request notifications for admin - FIXED: Show proper claim request notifications
+            // Fetch ONLY claim request notifications for admin
             db.collection("notifications")
                 .whereEqualTo("type", "claim_request")
                 .addSnapshotListener { snapshot, e ->
@@ -817,11 +832,20 @@ class AdminHomeActivity : ComponentActivity() {
                                 .weight(1f),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                "No history found",
-                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
-                                color = colorScheme.onSurface
-                            )
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    Icons.Default.History,
+                                    "No history",
+                                    modifier = Modifier.size(48.dp),
+                                    tint = colorScheme.onSurface.copy(alpha = 0.3f)
+                                )
+                                Spacer(Modifier.height(8.dp))
+                                Text(
+                                    "No $title found",
+                                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                                    color = colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
                         }
                     } else {
                         LazyColumn(modifier = Modifier.weight(1f)) {
@@ -1284,7 +1308,7 @@ class AdminHomeActivity : ComponentActivity() {
                 // Update student's claim history - FIXED: Use itemId for unique identification
                 db.collection("claim_history")
                     .whereEqualTo("claimerEmail", claim.claimerEmail)
-                    .whereEqualTo("itemId", claim.itemId) // CHANGED: Use itemId instead of title
+                    .whereEqualTo("itemId", claim.itemId)
                     .get()
                     .addOnSuccessListener { querySnapshot ->
                         querySnapshot.documents.forEach { doc ->
@@ -1310,9 +1334,25 @@ class AdminHomeActivity : ComponentActivity() {
                                         val pendingClaimRef = db.collection("claims").document(pendingClaimDoc.id)
                                         batch.update(pendingClaimRef, "claimStatus", "Rejected")
 
-                                        // Send rejection notification to other claimers
                                         val otherClaimerEmail = pendingClaimDoc.getString("claimerEmail") ?: ""
                                         val otherClaimerName = pendingClaimDoc.getString("claimerName") ?: ""
+
+                                        // FIX: Also update claim history for auto-rejected claims
+                                        db.collection("claim_history")
+                                            .whereEqualTo("claimerEmail", otherClaimerEmail)
+                                            .whereEqualTo("itemId", claim.itemId)
+                                            .get()
+                                            .addOnSuccessListener { historyQuerySnapshot ->
+                                                historyQuerySnapshot.documents.forEach { historyDoc ->
+                                                    db.collection("claim_history").document(historyDoc.id).update(
+                                                        "action", "Claim Auto-Rejected",
+                                                        "claimStatus", "Rejected",
+                                                        "adminNotes", "Auto-rejected because another claim was approved for this item"
+                                                    )
+                                                }
+                                            }
+
+                                        // Send rejection notification to other claimers
                                         val rejectionNotification = mapOf(
                                             "userId" to otherClaimerEmail,
                                             "title" to "Claim Auto-Rejected ❌",
@@ -1329,7 +1369,7 @@ class AdminHomeActivity : ComponentActivity() {
                                 batch.commit()
                             }
 
-                        // Send notification to approved claimer
+                        // Send notification to approved claimer ONLY
                         val approvedNotification = mapOf(
                             "userId" to claim.claimerEmail,
                             "title" to "Claim Approved! 🎉",
@@ -1341,19 +1381,6 @@ class AdminHomeActivity : ComponentActivity() {
                             "itemId" to claim.itemId
                         )
                         db.collection("notifications").add(approvedNotification)
-
-                        // Also send notification to uploader
-                        val uploaderNotification = mapOf(
-                            "userId" to claim.uploaderEmail,
-                            "title" to "Item Claim Approved ✅",
-                            "message" to "The item '${claim.title}' has been claimed by ${claim.claimerName} (${claim.claimerEmail}). The claim was approved.",
-                            "type" to "item_claimed",
-                            "read" to false,
-                            "timestamp" to System.currentTimeMillis(),
-                            "claimId" to claim.id,
-                            "itemId" to claim.itemId
-                        )
-                        db.collection("notifications").add(uploaderNotification)
 
                         Toast.makeText(this, "Claim approved and other claims for this item auto-rejected", Toast.LENGTH_SHORT).show()
                     }
@@ -1372,7 +1399,7 @@ class AdminHomeActivity : ComponentActivity() {
                 // Update student's claim history - FIXED: Use itemId for unique identification
                 db.collection("claim_history")
                     .whereEqualTo("claimerEmail", claim.claimerEmail)
-                    .whereEqualTo("itemId", claim.itemId) // CHANGED: Use itemId instead of title
+                    .whereEqualTo("itemId", claim.itemId)
                     .get()
                     .addOnSuccessListener { querySnapshot ->
                         querySnapshot.documents.forEach { doc ->
@@ -1408,7 +1435,7 @@ class AdminHomeActivity : ComponentActivity() {
                 // Update student's claim history - FIXED: Use itemId for unique identification
                 db.collection("claim_history")
                     .whereEqualTo("claimerEmail", claim.claimerEmail)
-                    .whereEqualTo("itemId", claim.itemId) // CHANGED: Use itemId instead of title
+                    .whereEqualTo("itemId", claim.itemId)
                     .get()
                     .addOnSuccessListener { querySnapshot ->
                         querySnapshot.documents.forEach { doc ->
