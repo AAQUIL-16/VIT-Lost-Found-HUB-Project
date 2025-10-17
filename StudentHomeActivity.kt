@@ -256,12 +256,13 @@ class StudentHomeActivity : ComponentActivity() {
         }
 
         // Fetch notifications - ONLY CLAIM-RELATED NOTIFICATIONS FOR CLAIMER
+        // Fetch notifications - ALL CLAIM-RELATED NOTIFICATIONS FOR STUDENT
         LaunchedEffect(Unit) {
             val currentUserEmail = auth.currentUser?.email
             if (currentUserEmail != null) {
                 db.collection("notifications")
                     .whereEqualTo("userId", currentUserEmail)
-                    .whereIn("type", listOf("claim_approved", "claim_rejected", "item_given"))
+                    .whereIn("type", listOf("claim_approved", "claim_rejected", "item_given", "item_returned"))
                     .addSnapshotListener { snapshot, e ->
                         val notificationList = mutableListOf<Notification>()
                         snapshot?.documents?.forEach { doc ->
@@ -283,7 +284,6 @@ class StudentHomeActivity : ComponentActivity() {
                     }
             }
         }
-
         // Fetch claim requests - ENHANCED WITH REAL-TIME UPDATES
         LaunchedEffect(Unit) {
             db.collection("claims")
@@ -932,7 +932,7 @@ class StudentHomeActivity : ComponentActivity() {
                                                     val notificationData = hashMapOf(
                                                         "userId" to item.uploaderEmail,
                                                         "title" to "New Claim Request",
-                                                        "message" to "Your item '${item.title}' has been claimed by ${currentUser.email}. Please wait for admin approval.",
+                                                        "message" to "The item '${item.title}' has been claimed by ${currentUser.email}.",
                                                         "type" to "claim_request",
                                                         "read" to false,
                                                         "timestamp" to System.currentTimeMillis(),
