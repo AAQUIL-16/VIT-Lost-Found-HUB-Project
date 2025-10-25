@@ -1332,16 +1332,6 @@ class StudentHomeActivity : ComponentActivity() {
                                     color = colorScheme.primary
                                 )
 
-                                IconButton(
-                                    onClick = { showProfile = false },
-                                    modifier = Modifier.size(32.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Close",
-                                        tint = colorScheme.onSurface
-                                    )
-                                }
                             }
 
                             Spacer(Modifier.height(16.dp))
