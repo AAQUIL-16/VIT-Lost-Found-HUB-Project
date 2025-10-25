@@ -1070,7 +1070,6 @@ class AdminHomeActivity : ComponentActivity() {
                                 .fillMaxWidth()
                                 .height(140.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .shadow(4.dp, RoundedCornerShape(12.dp))
                                 .clickable {
                                     onImageClick(item.imageUrl, "Uploaded by: ${item.uploaderEmail ?: "Unknown"}")
                                 }
